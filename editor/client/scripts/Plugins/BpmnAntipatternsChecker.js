@@ -55,10 +55,10 @@ ORYX.Plugins.BpmnAntipatternsChecker = {
 		data.push(["AP1_14 (Lack Of Synchronization)","AP1_14"]);
 		data.push(["AP1_15 (Deadlock)","AP1_15"]);
 		data.push(["AP1_16 (Deadlock)","AP1_16"]);
-		data.push(["AP2_1 (Deadlock)","AP2_1"]);
-		data.push(["AP2_2 (Deadlock)","AP2_2"]);
-		data.push(["AP2_3 (Deadlock)","AP2_3"]);
-		data.push(["AP2_4 (Deadlock)","AP2_4"]);
+		data.push(["AP2_1 (Improper completion)","AP2_1"]);
+		data.push(["AP2_2 (Improper completion)","AP2_2"]);
+		data.push(["AP2_3 (Improper completion)","AP2_3"]);
+		data.push(["AP2_4 (Improper completion)","AP2_4"]);
 		data.push(["AP3_1 (Deadlock)","AP3_1"]);
 		data.push(["AP3_2 (Deadlock)","AP3_2"]);
 		data.push(["AP3_3 (Deadlock)","AP3_3"]);
