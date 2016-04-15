@@ -383,7 +383,7 @@ ORYX.Plugins.BpmnAntipatternsChecker = {
 			'y': 0,
 			'id': rectId,
 			'stroke-width': 1, 
-			'stroke': '#00FF00', 
+			'stroke': 'red', 
 			'fill': 'none',
 			'stroke-dasharray': '4',
 			'pointer-events': 'none'}]);
@@ -419,8 +419,9 @@ ORYX.Plugins.BpmnAntipatternsChecker = {
 		var antipattern;
 		for (var i=0; i < antipatterns.length; i++){
 			antipattern = antipatterns[i];
-			html = html + antipattern.type + " (" + antipattern.description + "): " + antipattern.warningElementsIds.length + " warnings.<br/>";
+			html = html + antipattern.type + " (" + antipattern.description + "): " + antipattern.warningElementsIds.length + " elements that are causing the anti-pattern.<br/>";
 		}
+		html = html + "<br/>For more information, refer to help (move the mouse to the upper left of this canvas)";
         
 		var tooltip = new Ext.ToolTip({
         	showDelay: 100,
@@ -463,11 +464,12 @@ ORYX.Plugins.BpmnAntipatternsChecker = {
 			warning = warnings[i];
 			html = html + warning.antipatternType + " (" + warning.antipatternDescription + ") of the Node " + warning.nodeId + ".<br/>";
 		}
+		html = html + "<br/>For more information, refer to help (move the mouse to the upper left of this canvas)";
 		
 		var tooltip = new Ext.ToolTip({
 			showDelay: 100,
 			dismissDelay: 0,
-			title: "Warnings of the element",
+			title: "Anti-patterns that is causing the element",
 			html: html,
 			target: crossId
 		});
@@ -481,7 +483,7 @@ ORYX.Plugins.BpmnAntipatternsChecker = {
 				type        : ORYX.CONFIG.EVENT_OVERLAY_SHOW,
 				id          : overlayId,
 				shapes      : shapes,
-				attributes  : {fill: "#00FF00"},
+				attributes  : {fill: "yellow"},
 			});
 		}.bind(this);		
 		var hide = function(){			
@@ -562,7 +564,8 @@ ORYX.Plugins.BpmnAntipatternsChecker = {
 		html = html + "- The yellow crosses show possible elements that produces the anti-patterns of the nodes.<br/>";
 		html = html + "<br/><b>Descriptions of errors</b><br/>";
 		html = html + "<u>Lack of synchronization:</u> there are situations where an element is activated from multiple incoming branches.<br/>";
-		html = html + "<u>Deadlock:</u> there are situations where not all incoming branches are activated.";
+		html = html + "<u>Deadlock:</u> there are situations where not all incoming branches are activated.<br/>";
+		html = html + "<u>Improper completion:</u> there are situations where parallel activities cannot be executed properly.";
 		
 		var tooltip = new Ext.ToolTip({
         	showDelay: 100,

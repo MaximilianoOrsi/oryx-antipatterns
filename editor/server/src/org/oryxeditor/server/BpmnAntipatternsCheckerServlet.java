@@ -29,8 +29,8 @@ public class BpmnAntipatternsCheckerServlet extends HttpServlet {
 		values.add("antipatterns", antipatternsString);
 
 		Client client = Client.create();	
-		WebResource webResource = client.resource("http://bpmn-jmr03.rhcloud.com/tools/antipatternschecker");
-		//WebResource webResource = client.resource("http://localhost:8081/bpmn/tools/antipatternschecker");	
+		//WebResource webResource = client.resource("http://bpmn-jmr03.rhcloud.com/tools/antipatternschecker");
+		WebResource webResource = client.resource("http://localhost:8081/bpmn/tools/antipatternschecker");	
 		ClientResponse response = webResource
 									.type(MediaType.APPLICATION_FORM_URLENCODED)
 									.post(ClientResponse.class, values);

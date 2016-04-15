@@ -28,8 +28,8 @@ public class BpmnModelsGeneratorServlet extends HttpServlet {
 		
 	
 		Client client = Client.create();
-		WebResource webResource = client.resource("http://bpmn-jmr03.rhcloud.com/tools/modelsgenerator");
-		//WebResource webResource = client.resource("http://localhost:8081/bpmn/tools/modelsgenerator");			
+		//WebResource webResource = client.resource("http://bpmn-jmr03.rhcloud.com/tools/modelsgenerator");
+		WebResource webResource = client.resource("http://localhost:8081/bpmn/tools/modelsgenerator");			
 		ClientResponse response = webResource
 									.queryParam("numberOfModels",numberOfModels)
 									.queryParam("minElements",minElements)
