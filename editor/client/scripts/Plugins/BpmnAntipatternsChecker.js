@@ -8,10 +8,10 @@ ORYX.Plugins.BpmnAntipatternsChecker = {
 		
 		arguments.callee.$.construct.apply(this, arguments); //call plugin super class
         
-		this.raisedEventIds = [];	
-		
-		this.gIds = [];
-		
+		this.gIds = [];	
+		this.overlayIds = [];
+		this.tooltipIds = [];
+				
 		this.mask = new Ext.LoadMask(Ext.getBody(), {msg:"Please wait..."});
         
         this.facade.offer({
@@ -29,7 +29,7 @@ ORYX.Plugins.BpmnAntipatternsChecker = {
 	
 	perform: function(button, pressed){
         if (!pressed) {
-            this.resetErrors();
+            this.resetCanvas();
 			button.toggle(false);
         } else {
             this.showPanel(button);
@@ -157,35 +157,24 @@ ORYX.Plugins.BpmnAntipatternsChecker = {
 				
 				if(result.result=="The model is unsound."){
 
-					var processWithResult = result.processWithResult;
-				
-					// se cargan los nodos con antipatrones
-					var nodesWithAntipatterns = processWithResult.nodesWithAntipatterns;
-					
-					// se cargan los subprocesos con antipatrones
-					var subprocessesWithAntipatterns = this.subprocessesWithAntipatterns(processWithResult.subprocessesWithResult);				
+					var processWithResult = result.processWithResult;								
 					
 					// se muestran los nodos con antipatrones
+					var nodesWithAntipatterns = processWithResult.nodesWithAntipatterns;
 					for (var i=0; i < nodesWithAntipatterns.length; i++){
 						var node = nodesWithAntipatterns[i];
-						this.highlightNodeWithAntipatterns(node.nodeId, node.divergentId, node.convergentId, node.antipatterns);
-					}
-					
-					// se muestran los elementos con warnings
-					var elementsWithWarnings = this.elementsWithWarnings(nodesWithAntipatterns);		
-					for (var i=0; i < elementsWithWarnings.length; i++){	
-						var element = elementsWithWarnings[i];					
-						this.highlightElementWithWarnings(element.elementId, element.warnings);	
+						this.highlightNodeWithAntipatterns(node.nodeId, node.divergentId, node.convergentId, node.antipatterns, this.tooltipIds);
 					}
 					
 					// se muestran los subprocesos con antipatrones
+					var subprocessesWithAntipatterns = this.subprocessesWithAntipatterns(processWithResult.subprocessesWithResult);	
 					for (var i=0; i < subprocessesWithAntipatterns.length; i++){	
 						var subprocess = subprocessesWithAntipatterns[i];					
-						this.highlightSubprocessWithAntipatterns(subprocess);	
+						this.highlightSubprocessWithAntipatterns(subprocess, this.tooltipIds);	
 					}
 					
 					// se muestra la ayuda
-					this.showHelp();
+					this.showHelp(this.tooltipIds);
 					
 					// se muestra mensaje con resultado de la verificacion
 					this.mask.hide();
@@ -286,64 +275,27 @@ ORYX.Plugins.BpmnAntipatternsChecker = {
 		return false;
 	},
 	
-	elementsWithWarnings: function(nodesWithAntipatterns){
-
-		var elementsWithWarning = [];		
-		for (var i=0; i < nodesWithAntipatterns.length; i++){
-			for (var j=0; j < nodesWithAntipatterns[i].antipatterns.length; j++){
-				for (var k=0; k < nodesWithAntipatterns[i].antipatterns[j].warningElementsIds.length; k++){					
-					
-					var warning = {
-						nodeId: nodesWithAntipatterns[i].nodeId,
-						divergentId: nodesWithAntipatterns[i].divergentId,
-						convergentId: nodesWithAntipatterns[i].convergentId,
-						antipatternType: nodesWithAntipatterns[i].antipatterns[j].type,
-						antipatternDescription: nodesWithAntipatterns[i].antipatterns[j].description
-					};
-					
-					var elementWithWarning = {
-						elementId: nodesWithAntipatterns[i].antipatterns[j].warningElementsIds[k],
-						warning: warning
-					};
-				
-					elementsWithWarning.push(elementWithWarning);
-				}
-			}
-		}
-		
-		// se fusionan los elementsWithWarning
-		var elementsWithWarnings = [];
-		for (var i=0; i < elementsWithWarning.length; i++){
-			
-			var exist = false;
-			for (var j=0; j < elementsWithWarnings.length; j++){
-				if(elementsWithWarning[i].elementId == elementsWithWarnings[j].elementId){ // si existe, se le agrega el warning
-					elementsWithWarnings[j].warnings.push(elementsWithWarning[i].warning);
-					exist = true;
-					break;
-				}
-			}
-			
-			if(exist==false){ // si no existe, se lo agrega
-				
-				var elementWithWarnings = {
-					elementId: elementsWithWarning[i].elementId,
-					warnings: [elementsWithWarning[i].warning],
-				};
-				
-				elementsWithWarnings.push(elementWithWarnings);
-			}
-		}
-
-		return elementsWithWarnings;
-	},
-	
-	highlightNodeWithAntipatterns: function(nodeId, divergentId, convergentId, antipatterns){
+	highlightNodeWithAntipatterns: function(nodeId, divergentId, convergentId, antipatterns, tooltipIds){
 		
 		var divergentShape = this.facade.getCanvas().getChildShapeByResourceId(divergentId);
 		var convergentShape = this.facade.getCanvas().getChildShapeByResourceId(convergentId);
 	
 		// rectangulo sobre nodo
+		var containerNode = this.facade.getCanvas().getSvgContainer();
+		var gId = ORYX.Editor.provideId();
+		var node = ORYX.Editor.graft("http://www.w3.org/2000/svg", $(containerNode),['g',{'id':gId,'display':''}]);  		
+		var rectId = ORYX.Editor.provideId();  
+		var dashedArea = ORYX.Editor.graft("http://www.w3.org/2000/svg", node,
+			['rect', 
+			{'x': 0, 
+			'y': 0,
+			'id': rectId,
+			'stroke-width': 1, 
+			'stroke': 'red', 
+			'fill': 'none',
+			'stroke-dasharray': '4',
+			'pointer-events': 'none'}]);
+			
 		var setRectPosition = function(){
 			
 			var ulX1 = divergentShape.absoluteBounds().upperLeft().x;
@@ -371,31 +323,17 @@ ORYX.Plugins.BpmnAntipatternsChecker = {
 			dashedArea.setAttributeNS(null, 'height', height);
 			
         }.bind(this);
-	
-		var containerNode = this.facade.getCanvas().getSvgContainer();
-		var gId = ORYX.Editor.provideId();  
-		this.gIds.push(gId);
-		var node = ORYX.Editor.graft("http://www.w3.org/2000/svg", $(containerNode),['g',{'id':gId}]);  		
-		var rectId = ORYX.Editor.provideId();  
-		var dashedArea = ORYX.Editor.graft("http://www.w3.org/2000/svg", node,
-			['rect', 
-			{'x': 0, 
-			'y': 0,
-			'id': rectId,
-			'stroke-width': 1, 
-			'stroke': 'red', 
-			'fill': 'none',
-			'stroke-dasharray': '4',
-			'pointer-events': 'none'}]);
 
 		setRectPosition();
-		node.setAttributeNS(null, 'display', '');
 		
-		this.facade.registerOnEvent(ORYX.CONFIG.EVENT_MOUSEUP, setRectPosition.bind(this));	
-		document.documentElement.addEventListener(ORYX.CONFIG.EVENT_KEYUP, setRectPosition.bind(this), true);	
+		document.documentElement.addEventListener(ORYX.CONFIG.EVENT_MOUSEUP, setRectPosition);
+		document.documentElement.addEventListener(ORYX.CONFIG.EVENT_KEYUP, setRectPosition);
+		
+		this.gIds.push(gId);
 
+		
 		// cruz sobre divergente
-		var id = "antipatternschecker." + this.raisedEventIds.length;    
+		var overlayId = ORYX.Editor.provideId();    
         var crossId = ORYX.Editor.provideId();    
         var cross = ORYX.Editor.graft("http://www.w3.org/2000/svg", null, ['path', {
         	"id": crossId,
@@ -407,110 +345,110 @@ ORYX.Plugins.BpmnAntipatternsChecker = {
         }]); 
         this.facade.raiseEvent({
             type: ORYX.CONFIG.EVENT_OVERLAY_SHOW,
-            id: id,
+            id: overlayId,
             shapes: [divergentShape],
             node: cross,
             nodePosition: divergentShape instanceof ORYX.Core.Edge ? "START" : "NW"
         }); 
-        this.raisedEventIds.push(id);
+        this.overlayIds.push(overlayId);
 
+		
 		// tooltip sobre cruz divergente
+		var tooltipId = ORYX.Editor.provideId();
+		
 		var html = "";
-		var antipattern;
 		for (var i=0; i < antipatterns.length; i++){
-			antipattern = antipatterns[i];
-			html = html + antipattern.type + " (" + antipattern.description + "): " + antipattern.warningElementsIds.length + " elements that are causing the anti-pattern.<br/>";
+			var antipattern = antipatterns[i];
+			html = html + antipattern.type + " (" + antipattern.description + ") " + "<button name='"+antipattern.type+"' class='"+nodeId+"' type='button' style='background-color:lightgrey'>show elements</button><br/>";
 		}
 		html = html + "<br/>For more information, refer to help (move the mouse to the upper left of this canvas)";
-        
+
 		var tooltip = new Ext.ToolTip({
-        	showDelay: 100,
-			dismissDelay: 0,
-        	title: "Anti-patterns of the node " + nodeId,
-        	html: html,
-        	target: crossId
-        });
-    },
-
-	highlightElementWithWarnings: function(elementId, warnings){
-
-		var elementShape = this.facade.getCanvas().getChildShapeByResourceId(elementId);
-
-		// cruz sobre warning	
-		var height = elementShape.absoluteBounds().lowerRight().y - elementShape.absoluteBounds().upperLeft().y;	
-		var id = "antipatternschecker." + this.raisedEventIds.length;    
-		var crossId = ORYX.Editor.provideId();    
-		var cross = ORYX.Editor.graft("http://www.w3.org/2000/svg", null, ['path', {
-			"id": crossId,
-			"title": "",
-			"stroke-width": 5.0,
-			"stroke": "yellow",
-			"d": "M15,"+(height+20)+" L0,"+(height+5)+" M0,"+(height+20)+" L15,"+(height+5)+"",
-			"line-captions": "round"
-		}]); 
-		this.facade.raiseEvent({
-			type: ORYX.CONFIG.EVENT_OVERLAY_SHOW,
-			id: id,
-			shapes: [elementShape],
-			node: cross,
-			nodePosition: elementShape instanceof ORYX.Core.Edge ? "START" : "NW"
-		}); 
-		this.raisedEventIds.push(id);
-		
-		// tooltip sobre cruz warning
-		var html = "";
-		var warning;
-		for (var i=0; i < warnings.length; i++){
-			warning = warnings[i];
-			html = html + warning.antipatternType + " (" + warning.antipatternDescription + ") of the Node " + warning.nodeId + ".<br/>";
-		}
-		html = html + "<br/>For more information, refer to help (move the mouse to the upper left of this canvas)";
-		
-		var tooltip = new Ext.ToolTip({
+			id: tooltipId,
 			showDelay: 100,
-			dismissDelay: 0,
-			title: "Anti-patterns that is causing the element",
+			autoHide : false,
+			closable : true,
+			draggable: true,
+			floating: true,
+			shadow: false,
+			title: "Node with anti-patterns", 
 			html: html,
-			target: crossId
-		});
-       
-		// resaltar divergente y convergente	
-		var overlayId = ORYX.Editor.provideId(); 
-		var shapes = [];
+			target: crossId,
+			listeners: {
+				'render': function(){			
+					tooltipIds.push(tooltipId);
+                },
+                'show': function(){			
+					addEventToShowButtons();
+                }
+            }
+		});		
+
+		var addEventToShowButtons = function(){
+			
+			var showButtons = document.getElementsByClassName(nodeId);
+			for(var i=0;i<showButtons.length;i++){
+						
+				showButtons[i].className = "";
+						
+				var overlayId = ORYX.Editor.provideId();
+				this.overlayIds.push(overlayId);
+						
+				showButtons[i].addEventListener("click", function(){
+						
+					if(this.style.backgroundColor == "lightgrey"){
+						this.style.backgroundColor = "gray";
+						showElements(this.name,overlayId);
+					}
+					else{
+						this.style.backgroundColor = "lightgrey";
+						hideElements(overlayId);
+					}
+				});
+			}	
+			
+		}.bind(this);
 		
-		var show = function(){	
+		var showElements = function(ap,overlayId){
+			
+			var shapes = [];
+			shapes.push(divergentShape);
+			shapes.push(convergentShape);
+			for (var i=0; i < antipatterns.length; i++){
+				var antipattern = antipatterns[i];
+				if(antipattern.type==ap){
+					for (var j=0; j < antipattern.warningElementsIds.length; j++){
+						var elementShape = this.facade.getCanvas().getChildShapeByResourceId(antipattern.warningElementsIds[j]);
+						shapes.push(elementShape);
+					}
+				}
+			}
+			
 			this.facade.raiseEvent({
 				type        : ORYX.CONFIG.EVENT_OVERLAY_SHOW,
 				id          : overlayId,
 				shapes      : shapes,
-				attributes  : {fill: "yellow"},
+				attributes  : {fill: "yellow"}
 			});
-		}.bind(this);		
-		var hide = function(){			
-			this.facade.raiseEvent({
-                type: ORYX.CONFIG.EVENT_OVERLAY_HIDE,
-                id: overlayId
-            });
+				
 		}.bind(this);
 		
-		for (var i=0; i < warnings.length; i++){
-			warning = warnings[i];
-			var divergentShape = this.facade.getCanvas().getChildShapeByResourceId(warning.divergentId);
-			shapes.push(divergentShape);
-			var convergentShape = this.facade.getCanvas().getChildShapeByResourceId(warning.convergentId);
-			shapes.push(convergentShape);
-		}
+		var hideElements = function(overlayId){
 
-		document.getElementById(crossId).addEventListener(ORYX.CONFIG.EVENT_MOUSEOVER, show.bind(this), true);
-		document.getElementById(crossId).addEventListener(ORYX.CONFIG.EVENT_MOUSEOUT, hide.bind(this), true);
+			this.facade.raiseEvent({
+				type: ORYX.CONFIG.EVENT_OVERLAY_HIDE,
+				id: overlayId
+			});
+				
+		}.bind(this);
 	},
 	
-	highlightSubprocessWithAntipatterns: function(subprocessId){
+	highlightSubprocessWithAntipatterns: function(subprocessId,tooltipIds){
 		
 		var subprocessShape = this.facade.getCanvas().getChildShapeByResourceId(subprocessId);
 		
 		// cruz sobre subproceso
-		var id = "antipatternschecker." + this.raisedEventIds.length;    
+		var overlayId = ORYX.Editor.provideId();    
 		var crossId = ORYX.Editor.provideId();    
 		var cross = ORYX.Editor.graft("http://www.w3.org/2000/svg", null, ['path', {
 			"id": crossId,
@@ -522,31 +460,42 @@ ORYX.Plugins.BpmnAntipatternsChecker = {
 		}]); 
 		this.facade.raiseEvent({
 			type: ORYX.CONFIG.EVENT_OVERLAY_SHOW,
-			id: id,
+			id: overlayId,
 			shapes: [subprocessShape],
 			node: cross,
 			nodePosition: subprocessShape instanceof ORYX.Core.Edge ? "START" : "NW"
 		}); 
-		this.raisedEventIds.push(id);
+		this.overlayIds.push(overlayId);
+		
 		
 		// tooltip sobre cruz subproceso
-		var html = "This subprocess contains anti-patterns. Please open it and run the check again to viewing the anti-patterns.";
+		var tooltipId = ORYX.Editor.provideId();
+		
+		var html = "This subprocess contains anti-patterns. Please open it and run the check again to viewing the anti-patterns.<br/>";
+		html = html + "<br/>For more information, refer to help (move the mouse to the upper left of this canvas)";
 		
 		var tooltip = new Ext.ToolTip({
+			id: tooltipId,
 			showDelay: 100,
-			dismissDelay: 0,
+			floating: true,
+			shadow:false,
 			title: "Subprocess with anti-patterns",
 			html: html,
-			target: crossId
+			target: crossId,
+			listeners: {
+                'render': function(){			
+					tooltipIds.push(tooltipId);
+                }
+            }
 		});
 	},
 	
-	showHelp: function(){
+	showHelp: function(tooltipIds){
 		
+		// texto help
 		var containerNode = this.facade.getCanvas().getSvgContainer();
 		var gId = ORYX.Editor.provideId(); 
-		this.gIds.push(gId);
-		var node = ORYX.Editor.graft("http://www.w3.org/2000/svg", $(containerNode),['g',{'id':gId}]); 
+		var node = ORYX.Editor.graft("http://www.w3.org/2000/svg", $(containerNode),['g',{'id':gId,'display':''}]); 
 		var textId = ORYX.Editor.provideId();
 		var dashedArea = ORYX.Editor.graft("http://www.w3.org/2000/svg", node, 
 			['text', 
@@ -555,45 +504,62 @@ ORYX.Plugins.BpmnAntipatternsChecker = {
 			'id': textId, 
 			'style': 'font-size: 10px;'}, 
 			'Move the mouse to this position for help.']);
-		node.setAttributeNS(null, 'display', '');
+		this.gIds.push(gId);
+		
+		
+		// tooltip sobre texto help
+		var tooltipId = ORYX.Editor.provideId(); 
 		
 		var html = "";
 		html = html + "<br/><b>Instructions</b><br/>";
-		html = html + "- Move the mouse over crosses to see the errors messages.<br/>";
 		html = html + "- The red crosses show nodes or sub-processes that have anti-patterns.<br/>";
-		html = html + "- The yellow crosses show possible elements that produces the anti-patterns of the nodes.<br/>";
+		html = html + "- Move the mouse over crosses to see the errors messages.<br/>";
 		html = html + "<br/><b>Descriptions of errors</b><br/>";
 		html = html + "<u>Lack of synchronization:</u> there are situations where an element is activated from multiple incoming branches.<br/>";
 		html = html + "<u>Deadlock:</u> there are situations where not all incoming branches are activated.<br/>";
 		html = html + "<u>Improper completion:</u> there are situations where parallel activities cannot be executed properly.";
 		
 		var tooltip = new Ext.ToolTip({
+			id: tooltipId,
         	showDelay: 100,
 			autoHide: false,
 			closable: true,
+			draggable: true,
 			width: 500,
 			height: 400,
 			autoScroll: true,
+			floating: true,
+			shadow:false,
         	title: "Help",
         	html: html,
-        	target: textId
-        });
+        	target: textId,
+			listeners:{
+				'render':function(){
+					tooltipIds.push(tooltipId);
+				}
+			}
+        });	
 	},
 
-	resetErrors: function(){
-		this.raisedEventIds.each(function(id){
+	resetCanvas: function(){
+			
+		this.gIds.each(function(id){
+			document.getElementById(id).remove();
+		}.bind(this)); 
+		this.gIds.length=0; 
+
+		this.overlayIds.each(function(id){
 			this.facade.raiseEvent({
 				type: ORYX.CONFIG.EVENT_OVERLAY_HIDE,
 				id: id
 			});
-		}.bind(this))	
-		this.raisedEventIds = [];
-
-		this.gIds.each(function(id){
-			var child = document.getElementById(id);
-			this.facade.getCanvas().getSvgContainer().removeChild(child);		
-		}.bind(this)) 
-		this.gIds = []; 
+		}.bind(this));	
+		this.overlayIds.length=0;
+	
+		this.tooltipIds.each(function(id){
+			document.getElementById(id).remove();
+		}.bind(this));
+		this.tooltipIds.length=0;	
     },
 
 };
