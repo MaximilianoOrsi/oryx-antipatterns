@@ -10,19 +10,19 @@ Repository.Plugins.BpmnModelsGenerator = {
 	
 	construct: function(facade) {
 		
-		this.toolbarButtons = [];
+		this.mask = new Ext.LoadMask(Ext.getBody(), {msg:"Please wait..."});
+		
 		this.facade = facade;
 		
+		this.toolbarButtons = [];
 		this.toolbarButtons.push({
 			text 		: "BPMN 2.0 Processes",
-			menu 		: "Generate models",
+			menu 		: "Generate New Models",
 			menuIcon	: "/backend/images/silk/generate_models.png",
-			tooltipText : "Generate models",
+			tooltipText : "Generate new models of the selected type",
 			icon 		: "/backend/images/silk/bpmn_models_generator.png",
 			handler		: this.showPanel.bind(this)					
 		});
-		
-		this.mask = new Ext.LoadMask(Ext.getBody(), {msg:"Please wait..."});
 		
 		arguments.callee.$.construct.apply(this, arguments); //call plugin super class
 	},
@@ -36,19 +36,19 @@ Repository.Plugins.BpmnModelsGenerator = {
     		autoScroll: true,
 			width: 325, 
 			height: 285,
-			labelWidth: 200,
-			defaultType: 'numberfield',
     		defaults:{
+				        labelStyle: 'width:225px; padding-left:25px;',
                         width: 30,
                         msgTarget: 'under',
+						xtype: 'numberfield',
                         allowBlank: false,
                         allowDecimals: false,
                         allowExponential: false
    					},
 			items: [{
+						labelStyle: 'width:225px; padding-left:25px; font-weight:bold;',
                         fieldLabel: 'Number of models (1-n)',
 						name: 'numberOfModels',
-                        labelStyle: 'width:200px;font-weight:bold;text-decoration:underline;',
 						value: 4,
 						minValue: 1,  
 					},
@@ -103,6 +103,7 @@ Repository.Plugins.BpmnModelsGenerator = {
 								var maxNestingOfSubprocesses = parseInt(values['maxNestingOfSubprocesses']);									
 								
 								window.close();
+								this.mask.show();
 								this.generateModels(numberOfModels,minElements,maxElements,maxBranching,maxNesting,maxSequence,maxNestingOfSubprocesses);
 							} else { 
 								Ext.Msg.alert('Invalid Inputs', 'Please correct form errors.');
@@ -131,8 +132,6 @@ Repository.Plugins.BpmnModelsGenerator = {
     },
 	
 	generateModels: function(numberOfModels,minElements,maxElements,maxBranching,maxNesting,maxSequence,maxNestingOfSubprocesses){
-		
-		this.mask.show();
 		
 		// Send the request to the server to generate the models.
 		new Ajax.Request("/oryx/bpmnmodelsgenerator", {

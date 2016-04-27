@@ -359,7 +359,7 @@ ORYX.Plugins.BpmnAntipatternsChecker = {
 		var html = "";
 		for (var i=0; i < antipatterns.length; i++){
 			var antipattern = antipatterns[i];
-			html = html + antipattern.type + " (" + antipattern.description + ") " + "<button name='"+antipattern.type+"' class='"+nodeId+"' type='button' style='background-color:lightgrey'>show elements</button><br/>";
+			html = html + "<div style='clear: both;'><label style='float:left; width:180px; padding:4px;'>" + antipattern.type + " (" + antipattern.description + ")</label><button name='"+antipattern.type+"' class='"+nodeId+"' type='button' style='width:21px; height:21px; background-color:lightgray; background-image:url(/oryx/images/view_elements.png); background-repeat:no-repeat;' title='Show the combination of elements that produce the anti-pattern'></button></div>";
 		}
 		html = html + "<br/>For more information, refer to help (move the mouse to the upper left of this canvas)";
 
@@ -396,12 +396,12 @@ ORYX.Plugins.BpmnAntipatternsChecker = {
 						
 				showButtons[i].addEventListener("click", function(){
 						
-					if(this.style.backgroundColor == "lightgrey"){
+					if(this.style.backgroundColor == "lightgray"){
 						this.style.backgroundColor = "gray";
 						showElements(this.name,overlayId);
 					}
 					else{
-						this.style.backgroundColor = "lightgrey";
+						this.style.backgroundColor = "lightgray";
 						hideElements(overlayId);
 					}
 				});
