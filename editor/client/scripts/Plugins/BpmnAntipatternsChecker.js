@@ -11,9 +11,13 @@ ORYX.Plugins.BpmnAntipatternsChecker = {
 		this.gIds = [];	
 		this.overlayIds = [];
 		this.tooltipIds = [];
+		
+		this.styleNode = document.createElement('style');
+		this.styleNode.setAttributeNS(null, 'type', 'text/css');
+		document.getElementsByTagName('head')[0].appendChild(this.styleNode);
 				
 		this.mask = new Ext.LoadMask(Ext.getBody(), {msg:"Please wait..."});
-        
+		
         this.facade.offer({
             'name': "Anti-patterns checker",
             'functionality': this.perform.bind(this),
@@ -102,6 +106,7 @@ ORYX.Plugins.BpmnAntipatternsChecker = {
 							
 							window.myExtraParams.toggle = "true";
                             window.close(); 
+							this.mask.show();
 							this.checkAntipatterns(button,antipatternsString); 
 						}.bind(this)
 					}, 
@@ -137,8 +142,6 @@ ORYX.Plugins.BpmnAntipatternsChecker = {
 	
 	checkAntipatterns: function(button,antipatternsString){
 
-		this.mask.show();
-		
 		// se arma el processAsData
 		var processData = Ext.decode(this.facade.getSerializedJSON());
 		var processAsDataString = Ext.encode(this.buildProcessAsData("",processData));
@@ -391,55 +394,72 @@ ORYX.Plugins.BpmnAntipatternsChecker = {
 						
 				showButtons[i].className = "";
 						
-				var overlayId = ORYX.Editor.provideId();
-				this.overlayIds.push(overlayId);
-						
 				showButtons[i].addEventListener("click", function(){
+					
+					var shapes = [];
+					shapes.push(divergentShape);
+					shapes.push(convergentShape);
+					for(var i=0; i < antipatterns.length; i++){
+						var antipattern = antipatterns[i];
+						if(antipattern.type==this.name){
+							for (var j=0; j < antipattern.warningElementsIds.length; j++){
+								var elementShape = getElement(antipattern.warningElementsIds[j]);
+								shapes.push(elementShape);
+							}
+						}
+					}
 						
 					if(this.style.backgroundColor == "lightgray"){
 						this.style.backgroundColor = "gray";
-						showElements(this.name,overlayId);
+						showElements(shapes);
 					}
 					else{
 						this.style.backgroundColor = "lightgray";
-						hideElements(overlayId);
+						hideElements(shapes);
 					}
 				});
 			}	
 			
 		}.bind(this);
 		
-		var showElements = function(ap,overlayId){
+		var getElement = function(id){
 			
-			var shapes = [];
-			shapes.push(divergentShape);
-			shapes.push(convergentShape);
-			for (var i=0; i < antipatterns.length; i++){
-				var antipattern = antipatterns[i];
-				if(antipattern.type==ap){
-					for (var j=0; j < antipattern.warningElementsIds.length; j++){
-						var elementShape = this.facade.getCanvas().getChildShapeByResourceId(antipattern.warningElementsIds[j]);
-						shapes.push(elementShape);
-					}
-				}
+			var elementShape = this.facade.getCanvas().getChildShapeByResourceId(id);
+			return elementShape;
+			
+		}.bind(this);
+		
+		var showElements = function(shapes){
+			
+			for(var i=0;i<shapes.length;i++){
+				setAttributes(shapes[i].id);
 			}
-			
-			this.facade.raiseEvent({
-				type        : ORYX.CONFIG.EVENT_OVERLAY_SHOW,
-				id          : overlayId,
-				shapes      : shapes,
-				attributes  : {fill: "yellow"}
-			});
+					
+		}.bind(this);
+		
+		var setAttributes = function(id){
+		
+			var s = "#"+id+" .me * {fill: yellow} #"+id+" .me text * {fill: black} #"+id+"background) whit * {fill: yellow} #"+id+"background) whit text * {fill: black}\n";
+			this.styleNode.appendChild(document.createTextNode(s));
+		
+		}.bind(this);
+	
+		var hideElements = function(shapes){
+
+			for(var i=0;i<shapes.length;i++){
+				deleteAttributes(shapes[i].id);
+			}
 				
 		}.bind(this);
 		
-		var hideElements = function(overlayId){
-
-			this.facade.raiseEvent({
-				type: ORYX.CONFIG.EVENT_OVERLAY_HIDE,
-				id: overlayId
+		var deleteAttributes = function(id){
+					
+			var delEl = $A(this.styleNode.childNodes).find(function(e){ 
+				return e.textContent.include( '#' + id );
 			});
-				
+		
+			delEl.parentNode.removeChild(delEl);
+			
 		}.bind(this);
 	},
 	
@@ -560,8 +580,12 @@ ORYX.Plugins.BpmnAntipatternsChecker = {
 			document.getElementById(id).remove();
 		}.bind(this));
 		this.tooltipIds.length=0;	
+		
+		var delEl = $A(this.styleNode.childNodes);
+		delEl.each(function(el){
+			el.parentNode.removeChild(el);
+		});		
     },
-
 };
 
 ORYX.Plugins.BpmnAntipatternsChecker = ORYX.Plugins.AbstractPlugin.extend(ORYX.Plugins.BpmnAntipatternsChecker);
