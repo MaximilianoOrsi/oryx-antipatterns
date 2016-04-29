@@ -15,6 +15,8 @@ ORYX.Plugins.BpmnAntipatternsChecker = {
 		this.styleNode = document.createElement('style');
 		this.styleNode.setAttributeNS(null, 'type', 'text/css');
 		document.getElementsByTagName('head')[0].appendChild(this.styleNode);
+		
+		this.handlers = [];
 				
 		this.mask = new Ext.LoadMask(Ext.getBody(), {msg:"Please wait..."});
 		
@@ -176,12 +178,9 @@ ORYX.Plugins.BpmnAntipatternsChecker = {
 						this.highlightSubprocessWithAntipatterns(subprocess, this.tooltipIds);	
 					}
 					
-					// se muestra la ayuda
-					this.showHelp(this.tooltipIds);
-					
 					// se muestra mensaje con resultado de la verificacion
 					this.mask.hide();
-					Ext.Msg.alert("Result", result.result + "<br/>" + nodesWithAntipatterns.length + " nodes with anti-patterns were found.<br/>" + subprocessesWithAntipatterns.length + " subprocesses with anti-patterns were found.");
+					Ext.Msg.alert("Result", result.result + "<br/>" + nodesWithAntipatterns.length + " nodes with anti-patterns were found.<br/>" + subprocessesWithAntipatterns.length + " subprocesses with anti-patterns were found.<br/><br/>Note: move the mouse over crosses for more information.");
 				}else{ 
 					button.toggle(false);
 					this.mask.hide();
@@ -290,17 +289,20 @@ ORYX.Plugins.BpmnAntipatternsChecker = {
 		var rectId = ORYX.Editor.provideId();  
 		var dashedArea = ORYX.Editor.graft("http://www.w3.org/2000/svg", node,
 			['rect', 
-			{'x': 0, 
-			'y': 0,
-			'id': rectId,
+			{'id': rectId,
 			'stroke-width': 1, 
 			'stroke': 'red', 
 			'fill': 'none',
 			'stroke-dasharray': '4',
 			'pointer-events': 'none'}]);
+		this.gIds.push(gId);
 			
-		var setRectPosition = function(){
-			
+		var setRectPosition = function(e){
+		
+			if(e!=null && e.keyCode!=undefined && (e.keyCode!=37 && e.keyCode!=38 && e.keyCode!=39 && e.keyCode!=40)){
+				return;
+			}
+				
 			var ulX1 = divergentShape.absoluteBounds().upperLeft().x;
 			var ulY1 = divergentShape.absoluteBounds().upperLeft().y;
 			var lrX1 = divergentShape.absoluteBounds().lowerRight().x;
@@ -308,7 +310,7 @@ ORYX.Plugins.BpmnAntipatternsChecker = {
 			var ulX2 = convergentShape.absoluteBounds().upperLeft().x;
 			var ulY2 = convergentShape.absoluteBounds().upperLeft().y;
 			var lrX2 = convergentShape.absoluteBounds().lowerRight().x;
-			var lrY2 = convergentShape.absoluteBounds().lowerRight().y;
+			var lrY2 = convergentShape.absoluteBounds().lowerRight().y;			
 			
 			var xMax = Math.max(ulX1,lrX1,ulX2,lrX2);
 			var xMin = Math.min(ulX1,lrX1,ulX2,lrX2);
@@ -318,22 +320,57 @@ ORYX.Plugins.BpmnAntipatternsChecker = {
 			var x = xMin - 4;
 			var y = yMin - 4;
 			var width = xMax - xMin + 8;
-			var height = yMax - yMin + 8;
+			var height = yMax - yMin + 8;		
 			
-			dashedArea.setAttributeNS(null, 'x', x);
-			dashedArea.setAttributeNS(null, 'y', y);
-			dashedArea.setAttributeNS(null, 'width', width);
-			dashedArea.setAttributeNS(null, 'height', height);
+			var currentX = dashedArea.getAttributeNS(null,'x');
+			var currentY = dashedArea.getAttributeNS(null,'y');
+			var currentWidth = dashedArea.getAttributeNS(null,'width');
+			var currentHeight = dashedArea.getAttributeNS(null,'height');
+
+			var commandClass = ORYX.Core.Command.extend({
+				construct: function(x, y, width, height, currentX, currentY, currentWidth, currentHeight){
+					this.x = x;
+					this.y = y;
+					this.width = width;
+					this.height = height;
+					this.currentX = currentX;
+					this.currentY = currentY;
+					this.currentWidth = currentWidth;
+					this.currentHeight = currentHeight;
+				},			
+				execute: function(){
+					dashedArea.setAttributeNS(null, 'x', this.x);
+					dashedArea.setAttributeNS(null, 'y', this.y);
+					dashedArea.setAttributeNS(null, 'width', this.width);
+					dashedArea.setAttributeNS(null, 'height', this.height);
+				},
+				rollback: function(){					
+					dashedArea.setAttributeNS(null, 'x', this.currentX);
+					dashedArea.setAttributeNS(null, 'y', this.currentY);
+					dashedArea.setAttributeNS(null, 'width', this.currentWidth);
+					dashedArea.setAttributeNS(null, 'height', this.currentHeight);
+				}
+			});		
 			
+			if(currentX==null || currentY==null || currentWidth==null || currentHeight==null){
+				dashedArea.setAttributeNS(null, 'x', x);
+				dashedArea.setAttributeNS(null, 'y', y);
+				dashedArea.setAttributeNS(null, 'width', width);
+				dashedArea.setAttributeNS(null, 'height', height);
+			}
+			else if(x!=currentX || y!=currentY || width!=currentWidth || height!=currentHeight){
+				var command = new commandClass(x, y, width, height, currentX, currentY, currentWidth, currentHeight);
+				this.facade.executeCommands([command]);	
+			}
+				
         }.bind(this);
 
 		setRectPosition();
-		
-		document.documentElement.addEventListener(ORYX.CONFIG.EVENT_MOUSEUP, setRectPosition);
-		document.documentElement.addEventListener(ORYX.CONFIG.EVENT_KEYUP, setRectPosition);
-		
-		this.gIds.push(gId);
 
+		document.getElementById(this.facade.getCanvas().id).addEventListener(ORYX.CONFIG.EVENT_MOUSEUP, setRectPosition);
+		document.body.addEventListener(ORYX.CONFIG.EVENT_KEYUP, setRectPosition);
+		this.handlers.push(setRectPosition);
+		
 		
 		// cruz sobre divergente
 		var overlayId = ORYX.Editor.provideId();    
@@ -362,10 +399,13 @@ ORYX.Plugins.BpmnAntipatternsChecker = {
 		var html = "";
 		for (var i=0; i < antipatterns.length; i++){
 			var antipattern = antipatterns[i];
-			html = html + "<div style='clear: both;'><label style='float:left; width:180px; padding:4px;'>" + antipattern.type + " (" + antipattern.description + ")</label><button name='"+antipattern.type+"' class='"+nodeId+"' type='button' style='width:21px; height:21px; background-color:lightgray; background-image:url(/oryx/images/view_elements.png); background-repeat:no-repeat;' title='Show the combination of elements that produce the anti-pattern'></button></div>";
+			html = html + "<div style='clear: both;'><label style='float:left; width:180px; padding:4px;'>" + antipattern.type + " (" + antipattern.description + ")</label><button name='"+antipattern.type+"' class='"+nodeId+"' type='button' style='width:21px; height:21px; background-color:lightgray; background-image:url(/oryx/images/view_elements.png); background-repeat:no-repeat; cursor:pointer' title='Show the combination of elements that produce the anti-pattern'></button></div>";
 		}
-		html = html + "<br/>For more information, refer to help (move the mouse to the upper left of this canvas)";
-
+		html = html + "<br/><b>Descriptions of errors</b><br/>";
+		html = html + "<u>Lack of synchronization:</u> there are situations where an element is activated from multiple incoming branches.<br/>";
+		html = html + "<u>Deadlock:</u> there are situations where not all incoming branches are activated.<br/>";
+		html = html + "<u>Improper completion:</u> there are situations where parallel activities cannot be executed properly.";
+		
 		var tooltip = new Ext.ToolTip({
 			id: tooltipId,
 			showDelay: 100,
@@ -491,8 +531,7 @@ ORYX.Plugins.BpmnAntipatternsChecker = {
 		// tooltip sobre cruz subproceso
 		var tooltipId = ORYX.Editor.provideId();
 		
-		var html = "This subprocess contains anti-patterns. Please open it and run the check again to viewing the anti-patterns.<br/>";
-		html = html + "<br/>For more information, refer to help (move the mouse to the upper left of this canvas)";
+		var html = "This subprocess contains anti-patterns. Please open it and run the check again to viewing the anti-patterns.";
 		
 		var tooltip = new Ext.ToolTip({
 			id: tooltipId,
@@ -508,57 +547,6 @@ ORYX.Plugins.BpmnAntipatternsChecker = {
                 }
             }
 		});
-	},
-	
-	showHelp: function(tooltipIds){
-		
-		// texto help
-		var containerNode = this.facade.getCanvas().getSvgContainer();
-		var gId = ORYX.Editor.provideId(); 
-		var node = ORYX.Editor.graft("http://www.w3.org/2000/svg", $(containerNode),['g',{'id':gId,'display':''}]); 
-		var textId = ORYX.Editor.provideId();
-		var dashedArea = ORYX.Editor.graft("http://www.w3.org/2000/svg", node, 
-			['text', 
-			{'x': 5, 
-			'y': 15, 
-			'id': textId, 
-			'style': 'font-size: 10px;'}, 
-			'Move the mouse to this position for help.']);
-		this.gIds.push(gId);
-		
-		
-		// tooltip sobre texto help
-		var tooltipId = ORYX.Editor.provideId(); 
-		
-		var html = "";
-		html = html + "<br/><b>Instructions</b><br/>";
-		html = html + "- The red crosses show nodes or sub-processes that have anti-patterns.<br/>";
-		html = html + "- Move the mouse over crosses to see the errors messages.<br/>";
-		html = html + "<br/><b>Descriptions of errors</b><br/>";
-		html = html + "<u>Lack of synchronization:</u> there are situations where an element is activated from multiple incoming branches.<br/>";
-		html = html + "<u>Deadlock:</u> there are situations where not all incoming branches are activated.<br/>";
-		html = html + "<u>Improper completion:</u> there are situations where parallel activities cannot be executed properly.";
-		
-		var tooltip = new Ext.ToolTip({
-			id: tooltipId,
-        	showDelay: 100,
-			autoHide: false,
-			closable: true,
-			draggable: true,
-			width: 500,
-			height: 400,
-			autoScroll: true,
-			floating: true,
-			shadow:false,
-        	title: "Help",
-        	html: html,
-        	target: textId,
-			listeners:{
-				'render':function(){
-					tooltipIds.push(tooltipId);
-				}
-			}
-        });	
 	},
 
 	resetCanvas: function(){
@@ -584,7 +572,13 @@ ORYX.Plugins.BpmnAntipatternsChecker = {
 		var delEl = $A(this.styleNode.childNodes);
 		delEl.each(function(el){
 			el.parentNode.removeChild(el);
-		});		
+		});	
+
+		this.handlers.each(function(ev){
+			document.getElementById(this.facade.getCanvas().id).removeEventListener(ORYX.CONFIG.EVENT_MOUSEUP, ev);
+			document.body.removeEventListener(ORYX.CONFIG.EVENT_KEYUP, ev);
+		}.bind(this));
+		this.handlers.length=0;				
     },
 };
 
