@@ -160,7 +160,7 @@ ORYX.Plugins.BpmnAntipatternsChecker = {
 
 				var result = Ext.decode(response.responseText);	
 				
-				if(result.result=="The model is unsound."){
+				if(result.result=="The model is unsound according to the anti-patterns that were selected."){
 
 					var processWithResult = result.processWithResult;								
 					
@@ -168,7 +168,8 @@ ORYX.Plugins.BpmnAntipatternsChecker = {
 					var nodesWithAntipatterns = processWithResult.nodesWithAntipatterns;
 					for (var i=0; i < nodesWithAntipatterns.length; i++){
 						var node = nodesWithAntipatterns[i];
-						this.highlightNodeWithAntipatterns(node.nodeId, node.divergentId, node.convergentId, node.antipatterns, this.tooltipIds);
+						var nodeName = "node " + i;
+						this.highlightNodeWithAntipatterns(nodeName, node.divergentId, node.convergentId, node.antipatterns, this.tooltipIds);
 					}
 					
 					// se muestran los subprocesos con antipatrones
@@ -277,7 +278,7 @@ ORYX.Plugins.BpmnAntipatternsChecker = {
 		return false;
 	},
 	
-	highlightNodeWithAntipatterns: function(nodeId, divergentId, convergentId, antipatterns, tooltipIds){
+	highlightNodeWithAntipatterns: function(nodeName, divergentId, convergentId, antipatterns, tooltipIds){
 		
 		var divergentShape = this.facade.getCanvas().getChildShapeByResourceId(divergentId);
 		var convergentShape = this.facade.getCanvas().getChildShapeByResourceId(convergentId);
@@ -297,11 +298,7 @@ ORYX.Plugins.BpmnAntipatternsChecker = {
 			'pointer-events': 'none'}]);
 		this.gIds.push(gId);
 			
-		var setRectPosition = function(e){
-		
-			if(e!=null && e.keyCode!=undefined && (e.keyCode!=37 && e.keyCode!=38 && e.keyCode!=39 && e.keyCode!=40)){
-				return;
-			}
+		var setRectPosition = function(){
 				
 			var ulX1 = divergentShape.absoluteBounds().upperLeft().x;
 			var ulY1 = divergentShape.absoluteBounds().upperLeft().y;
@@ -326,31 +323,6 @@ ORYX.Plugins.BpmnAntipatternsChecker = {
 			var currentY = dashedArea.getAttributeNS(null,'y');
 			var currentWidth = dashedArea.getAttributeNS(null,'width');
 			var currentHeight = dashedArea.getAttributeNS(null,'height');
-
-			var commandClass = ORYX.Core.Command.extend({
-				construct: function(x, y, width, height, currentX, currentY, currentWidth, currentHeight){
-					this.x = x;
-					this.y = y;
-					this.width = width;
-					this.height = height;
-					this.currentX = currentX;
-					this.currentY = currentY;
-					this.currentWidth = currentWidth;
-					this.currentHeight = currentHeight;
-				},			
-				execute: function(){
-					dashedArea.setAttributeNS(null, 'x', this.x);
-					dashedArea.setAttributeNS(null, 'y', this.y);
-					dashedArea.setAttributeNS(null, 'width', this.width);
-					dashedArea.setAttributeNS(null, 'height', this.height);
-				},
-				rollback: function(){					
-					dashedArea.setAttributeNS(null, 'x', this.currentX);
-					dashedArea.setAttributeNS(null, 'y', this.currentY);
-					dashedArea.setAttributeNS(null, 'width', this.currentWidth);
-					dashedArea.setAttributeNS(null, 'height', this.currentHeight);
-				}
-			});		
 			
 			if(currentX==null || currentY==null || currentWidth==null || currentHeight==null){
 				dashedArea.setAttributeNS(null, 'x', x);
@@ -358,17 +330,24 @@ ORYX.Plugins.BpmnAntipatternsChecker = {
 				dashedArea.setAttributeNS(null, 'width', width);
 				dashedArea.setAttributeNS(null, 'height', height);
 			}
-			else if(x!=currentX || y!=currentY || width!=currentWidth || height!=currentHeight){
-				var command = new commandClass(x, y, width, height, currentX, currentY, currentWidth, currentHeight);
-				this.facade.executeCommands([command]);	
+			else if(x!=currentX || y!=currentY || width!=currentWidth || height!=currentHeight){				
+				dashedArea.setAttributeNS(null, 'x', x);
+				dashedArea.setAttributeNS(null, 'y', y);
+				dashedArea.setAttributeNS(null, 'width', width);
+				dashedArea.setAttributeNS(null, 'height', height);
 			}
 				
         }.bind(this);
 
 		setRectPosition();
-
-		document.getElementById(this.facade.getCanvas().id).addEventListener(ORYX.CONFIG.EVENT_MOUSEUP, setRectPosition);
-		document.body.addEventListener(ORYX.CONFIG.EVENT_KEYUP, setRectPosition);
+	
+		this.facade.registerOnEvent(ORYX.CONFIG.EVENT_DRAGDROP_END, setRectPosition);
+		this.facade.registerOnEvent("key.event.up.37", setRectPosition);	
+		this.facade.registerOnEvent("key.event.up.38", setRectPosition);
+		this.facade.registerOnEvent("key.event.up.39", setRectPosition);
+		this.facade.registerOnEvent("key.event.up.40", setRectPosition);
+		this.facade.registerOnEvent(ORYX.CONFIG.EVENT_UNDO_EXECUTE, setRectPosition);	
+		this.facade.registerOnEvent(ORYX.CONFIG.EVENT_UNDO_ROLLBACK, setRectPosition);	
 		this.handlers.push(setRectPosition);
 		
 		
@@ -396,19 +375,29 @@ ORYX.Plugins.BpmnAntipatternsChecker = {
 		// tooltip sobre cruz divergente
 		var tooltipId = ORYX.Editor.provideId();
 		
-		var html = "";
+		var html = "<div style='width:290px;max-height:290px;overflow:auto;'>";
 		for (var i=0; i < antipatterns.length; i++){
 			var antipattern = antipatterns[i];
-			html = html + "<div style='clear: both;'><label style='float:left; width:180px; padding:4px;'>" + antipattern.type + " (" + antipattern.description + ")</label><button name='"+antipattern.type+"' class='"+nodeId+"' type='button' style='width:21px; height:21px; background-color:lightgray; background-image:url(/oryx/images/view_elements.png); background-repeat:no-repeat; cursor:pointer' title='Show the combination of elements that produce the anti-pattern'></button></div>";
+			html = html + "<br/>" + antipattern.name + ": " + antipattern.description + "<br/>";
+			html = html + "<ul>";
+			for(var j=0; j < antipattern.combinationsOfElements.length; j++){
+				var tagName = antipattern.name + " " + j;
+				var numberOfCombination = j+1;
+				html = html + "<li><label style='float:left; width:160px; padding:4px;'>Combination of elements "+ numberOfCombination +"</label><button name='"+tagName+"' class='"+nodeName+"' type='button' style='width:22px; height:22px; background-color:lightgray; background-image:url(/oryx/images/view_elements.png); background-repeat:no-repeat; cursor:pointer' title='Show the combination of elements that produce the anti-pattern'></button></li>";
+			}
+			html = html + "</ul>";
 		}
 		html = html + "<br/><b>Descriptions of errors</b><br/>";
-		html = html + "<u>Lack of synchronization:</u> there are situations where an element is activated from multiple incoming branches.<br/>";
-		html = html + "<u>Deadlock:</u> there are situations where not all incoming branches are activated.<br/>";
-		html = html + "<u>Improper completion:</u> there are situations where parallel activities cannot be executed properly.";
+		html = html + "<ul>";
+		html = html + "<li><u>Lack of synchronization:</u> there are situations where an element is activated from multiple incoming branches.</li>";
+		html = html + "<li><u>Deadlock:</u> there are situations where not all incoming branches are activated.</li>";
+		html = html + "<li><u>Improper completion:</u> there are situations where parallel activities cannot be executed properly.</li>";
+		html = html + "</ul>";
+		html = html + "</div>";
 		
 		var tooltip = new Ext.ToolTip({
 			id: tooltipId,
-			showDelay: 100,
+			showDelay: 0,
 			autoHide : false,
 			closable : true,
 			draggable: true,
@@ -429,26 +418,29 @@ ORYX.Plugins.BpmnAntipatternsChecker = {
 
 		var addEventToShowButtons = function(){
 			
-			var showButtons = document.getElementsByClassName(nodeId);
+			var showButtons = document.getElementsByClassName(nodeName);
 			for(var i=0;i<showButtons.length;i++){
-						
+		
 				showButtons[i].className = "";
 						
 				showButtons[i].addEventListener("click", function(){
+
+					var tagName = (this.name).split(" ");
+					var antipatternName = tagName[0];
+					var numberOfCombination = tagName[1];
 					
 					var shapes = [];
-					shapes.push(divergentShape);
-					shapes.push(convergentShape);
-					for(var i=0; i < antipatterns.length; i++){
-						var antipattern = antipatterns[i];
-						if(antipattern.type==this.name){
-							for (var j=0; j < antipattern.warningElementsIds.length; j++){
-								var elementShape = getElement(antipattern.warningElementsIds[j]);
+					for(var j=0; j < antipatterns.length; j++){
+						var antipattern = antipatterns[j];
+						if(antipattern.name==antipatternName){
+							var combinationOfElements = antipattern.combinationsOfElements[numberOfCombination];
+							for (var k=0; k < combinationOfElements.length; k++){
+								var elementShape = getElement(combinationOfElements[k]);
 								shapes.push(elementShape);
 							}
 						}
 					}
-						
+	
 					if(this.style.backgroundColor == "lightgray"){
 						this.style.backgroundColor = "gray";
 						showElements(shapes);
@@ -531,15 +523,13 @@ ORYX.Plugins.BpmnAntipatternsChecker = {
 		// tooltip sobre cruz subproceso
 		var tooltipId = ORYX.Editor.provideId();
 		
-		var html = "This subprocess contains anti-patterns. Please open it and run the check again to viewing the anti-patterns.";
-		
 		var tooltip = new Ext.ToolTip({
 			id: tooltipId,
-			showDelay: 100,
+			showDelay: 0,
 			floating: true,
 			shadow:false,
 			title: "Subprocess with anti-patterns",
-			html: html,
+			html: "<br/>This subprocess contains anti-patterns. Please open it and run the check again to viewing the anti-patterns.",
 			target: crossId,
 			listeners: {
                 'render': function(){			
@@ -574,9 +564,14 @@ ORYX.Plugins.BpmnAntipatternsChecker = {
 			el.parentNode.removeChild(el);
 		});	
 
-		this.handlers.each(function(ev){
-			document.getElementById(this.facade.getCanvas().id).removeEventListener(ORYX.CONFIG.EVENT_MOUSEUP, ev);
-			document.body.removeEventListener(ORYX.CONFIG.EVENT_KEYUP, ev);
+		this.handlers.each(function(ev){			
+			this.facade.unregisterOnEvent(ORYX.CONFIG.EVENT_DRAGDROP_END, ev);
+			this.facade.unregisterOnEvent("key.event.up.37", ev);
+			this.facade.unregisterOnEvent("key.event.up.38", ev);
+			this.facade.unregisterOnEvent("key.event.up.39", ev);
+			this.facade.unregisterOnEvent("key.event.up.40", ev);
+			this.facade.unregisterOnEvent(ORYX.CONFIG.EVENT_UNDO_EXECUTE, ev);
+			this.facade.unregisterOnEvent(ORYX.CONFIG.EVENT_UNDO_ROLLBACK, ev);
 		}.bind(this));
 		this.handlers.length=0;				
     },
