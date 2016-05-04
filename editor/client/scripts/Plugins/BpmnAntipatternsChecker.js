@@ -69,6 +69,10 @@ ORYX.Plugins.BpmnAntipatternsChecker = {
 		data.push(["AP3_2 (Deadlock)","AP3_2"]);
 		data.push(["AP3_3 (Deadlock)","AP3_3"]);
 		data.push(["AP3_4 (Deadlock)","AP3_4"]);
+		data.push(["AP4_1 (Improper completion)","AP4_1"]);
+		data.push(["AP4_2 (Improper completion)","AP4_2"]);
+		data.push(["AP4_3 (Improper completion)","AP4_3"]);
+		data.push(["AP4_4 (Improper completion)","AP4_4"]);
 		
 		// Create a ArrayReader
 		var reader = new Ext.data.ArrayReader({},[{name: 'title'},{name: 'value'}]);
