@@ -21,7 +21,7 @@ Repository.Plugins.BpmnModelsGenerator = {
 			menuIcon	: "/backend/images/silk/generate_models.png",
 			tooltipText : "Generate new models of the selected type",
 			icon 		: "/backend/images/silk/bpmn_models_generator.png",
-			handler		: this.showPanel.bind(this)					
+			handler		: this.showPanel.bind(this)			
 		});
 		
 		arguments.callee.$.construct.apply(this, arguments); //call plugin super class

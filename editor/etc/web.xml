@@ -272,6 +272,16 @@
 			org.oryxeditor.server.BpmnModelsGeneratorServlet
 		</servlet-class>
 	</servlet>
+	
+	<servlet>
+		<display-name>
+			Oryx Export All
+		</display-name>
+		<servlet-name>ExportAll</servlet-name>
+		<servlet-class>
+			org.oryxeditor.server.ExportAllServlet
+		</servlet-class>
+	</servlet>
     
     <servlet>
         <display-name>
@@ -631,6 +641,11 @@
 	<servlet-mapping>
 		<servlet-name>BpmnModelsGenerator</servlet-name>
 		<url-pattern>/bpmnmodelsgenerator</url-pattern>
+	</servlet-mapping>
+	
+	<servlet-mapping>
+		<servlet-name>ExportAll</servlet-name>
+		<url-pattern>/exportall</url-pattern>
 	</servlet-mapping>
 
 	<servlet-mapping>
