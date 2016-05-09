@@ -166,7 +166,7 @@ ORYX.Plugins.BpmnAntipatternsChecker = {
 				
 				if(result.result=="The model is unsound according to the anti-patterns that were selected."){
 
-					var processWithResult = result.processWithResult;								
+					var processWithResult = result.model;								
 					
 					// se muestran los nodos con antipatrones
 					var nodesWithAntipatterns = processWithResult.nodesWithAntipatterns;

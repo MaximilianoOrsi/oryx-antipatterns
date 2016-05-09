@@ -20,7 +20,7 @@ Repository.Plugins.ExportAll = {
 			region		: 'right',
 			tooltipText : "Export All",
 			icon 		: "/backend/images/silk/page_white_code.png",
-			handler		: this.exportAllModels.bind(this)				
+			handler		: this.exportAllModels.bind(this)			
 		});
 			
 		arguments.callee.$.construct.apply(this, arguments); //call Plugin super class
