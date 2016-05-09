@@ -135,7 +135,7 @@ Repository.Plugins.BpmnModelsGenerator = {
 		
 		// Send the request to the server to generate the models.
 		new Ajax.Request("/oryx/bpmnmodelsgenerator", {
-			method: 'GET',
+			method: 'POST',
 			asynchronous: false,
 			parameters: {
 				numberOfModels: numberOfModels,
