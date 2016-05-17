@@ -19,13 +19,13 @@ public class BpmnAntipatternsCheckerServlet extends HttpServlet {
 	
 	protected void doPost(HttpServletRequest req, HttpServletResponse res) throws IOException  {
 		
-		String processAsDataString = req.getParameter("processAsDataString");	
-		String antipatternsString = req.getParameter("antipatternsString");
+		String processAsDataString = req.getParameter("model");	
+		String antipatternsString = req.getParameter("antipatterns");
 		res.setContentType("application/json");
 
 			
 		MultivaluedMapImpl values = new MultivaluedMapImpl();
-		values.add("process", processAsDataString);
+		values.add("model", processAsDataString);
 		values.add("antipatterns", antipatternsString);
 
 		Client client = Client.create();	

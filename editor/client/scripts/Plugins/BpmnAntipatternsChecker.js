@@ -157,8 +157,8 @@ ORYX.Plugins.BpmnAntipatternsChecker = {
 			method: 'POST',
 			asynchronous: false,
 			parameters: {
-				processAsDataString: processAsDataString,
-				antipatternsString: antipatternsString
+				model: processAsDataString,
+				antipatterns: antipatternsString
 			},
 			onSuccess: function(response){
 
